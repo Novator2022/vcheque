@@ -24,8 +24,8 @@ class Nomenclature extends Model
         foreach ($data["positions"] as $position) {
             $nomenclature = null;
             $name = $position["nomenclature"] ?? $position["name"];
-            $nds = $position["nds"] ?? 20;
-            $nds = in_array($nds, [0,10,20]) ? $nds : 20;
+            $nds = $position["nds"] ?? 22;
+            $nds = in_array($nds, [0,10,20,22]) ? $nds : 22;
             $id = $position["nomenclature_id"] ?? null;
 
             if (!empty($id)) {

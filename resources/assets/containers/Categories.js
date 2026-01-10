@@ -99,8 +99,8 @@ class Categories extends Component {
                 text: '10%'
             },
             {
-                value: "20",
-                text: '20%'
+                value: "22",
+                text: '22%'
             }
         ];
 

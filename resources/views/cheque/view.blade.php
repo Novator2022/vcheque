@@ -15,6 +15,12 @@
 	</style>
 </head>
 <body>
+	<?php
+		$nds_rate = 22;
+		if ((strtotime($cheque->modulkassa['fiscalInfo']['date'])) < (strtotime('2026-01-01'))) {
+			$nds_rate = 20;
+		}
+	?>
 	<?php /*<pre style="position:fixed;left:10px;top:10px; border:1px solid #ccc;padding: 10px; background: #fff;opacity:0.5"><?php print_r($cheque->organisation); ?><?php print_r($cheque->modulkassa); ?></pre>*/ ?>
 	<div class="wrapper" style="background-color:white; font-weight:400; margin:0 auto; padding:15px; max-width: 450px;" bgcolor="white">
 		<h6 class="long_text">&nbsp;</h6>
@@ -62,7 +68,7 @@
 			</tr>
 
 			<?php $ind = 1; ?>
-			<?php $nds = 0.2; ?>
+			<?php $nds = $nds_rate / 100; ?>
 			<?php foreach ($cheque->data['positions'] as $item) { ?>
 				<?php $nds = $item['nds'] * 100; ?>
 				<tr style="line-height:20px">
@@ -81,7 +87,7 @@
 				<?php } else { ?>
 					<tr style="line-height:20px">
 						<td style="padding:0 3px 0 0; text-align:left; vertical-align:top; padding-left:0" align="left" valign="top"></td>
-						<td class="text_left" style="padding:0 3px 0 0; text-align:left; vertical-align:top" align="left" valign="top">В том числе НДС 20%</td>
+						<td class="text_left" style="padding:0 3px 0 0; text-align:left; vertical-align:top" align="left" valign="top">В том числе НДС <?php print $nds_rate; ?>%</td>
 						<td style="padding:0 3px 0 0; text-align:right; vertical-align:top; padding-right:0" align="right" valign="top">
 							<?php print number_format(($item['amount'] * $item['quantity']) / ($nds + 100) * $nds, 2, '.', ''); ?>₽
 						</td>
@@ -110,7 +116,7 @@
 		        </tr>
 			<?php } else { ?>
 				<tr class="comment" style="line-height:20px; color:#8f8f8f">
-					<td style="padding:0 3px 0 0; text-align:left; vertical-align:top; padding-left:0" align="left" valign="top">В том числе НДС 20%</td>
+					<td style="padding:0 3px 0 0; text-align:left; vertical-align:top; padding-left:0" align="left" valign="top">В том числе НДС <?php print $nds_rate; ?>%</td>
 					<td style="padding:0 3px 0 0; text-align:right; vertical-align:top; padding-right:0" align="right" valign="top"><?php print number_format($cheque->modulkassa['fiscalInfo']['sum'] / ($nds + 100) * $nds, 2, '.', ''); ?>₽</td>
 				</tr>
 			<?php } ?>

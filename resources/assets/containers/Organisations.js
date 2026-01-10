@@ -110,8 +110,8 @@ class Organisations extends Component {
             {
                 active: true,
                 selected: true,
-                value: 0.2,
-                text: '20%'
+                value: 0.22,
+                text: '22%'
             }
         ];
         return <Segment>
@@ -125,7 +125,7 @@ class Organisations extends Component {
                             <Modal.Content>
                                 <Form>
                                     <Form.Select loading={(expensetypes.fetching && expensetypes.data)} required name="expense_type_id" error={(errors && errors.expense_type_id)?{content:errors.expense_type_id[0],pointing:'below'}:null} options={expensetypeOptions}  label={trans('messages.expensetypes.title')} onChange={this.handleCreateFormFieldChange}/>
-                                    <Form.Select required name="data.nds" error={(errors && errors.nds)?{content:errors.nds[0],pointing:'below'}:null} options={ndsOptions} label={trans('messages.nds')} onChange={this.handleCreateFormFieldChange} defaultValue={0.2}/>
+                                    <Form.Select required name="data.nds" error={(errors && errors.nds)?{content:errors.nds[0],pointing:'below'}:null} options={ndsOptions} label={trans('messages.nds')} onChange={this.handleCreateFormFieldChange} defaultValue={0.22}/>
                                     <Form.Input required name="name" label={trans('messages.name')} onChange={this.handleCreateFormFieldChange}/>
                                     <Form.Input required name="data.cashier" label="Кассир" onChange={this.handleCreateFormFieldChange}/>
                                     <Form.Input name="data.inn" label={trans('messages.organisations.inn')} onChange={this.handleCreateFormFieldChange}/>

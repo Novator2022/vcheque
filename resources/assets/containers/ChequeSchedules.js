@@ -20,7 +20,7 @@ export const INITIAL_POSITION = {
     amount_to:10,
     quantity_from:1,
     quantity_to:10,
-    nds:0.2,
+    nds:0.22,
 };
 
 class ChequeSchedules extends Component {

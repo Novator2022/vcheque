@@ -122,8 +122,8 @@ class Organisation extends Component {
             },
             {
                 key:2,
-                value: 0.2,
-                text: '20%'
+                value: 0.22,
+                text: '22%'
             }
         ];
         const gmtOptions = [

@@ -101,7 +101,7 @@ class Modulkassa
 
         foreach ($cheque->data["positions"] as $pos) {
             $ndsTag = "1102";
-            $nds = $pos["nds"] ?? 0.2;
+            $nds = $pos["nds"] ?? 0.22;
             if ($nds*100 == 10) {
                 $ndsTag = "1103";
             } elseif ($nds*100 == 0) {

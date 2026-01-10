@@ -19,7 +19,7 @@ const INITIAL_POSITION = {
     name: '',
     amount:100,
     quantity:1,
-    nds:0.2
+    nds:0.22
 };
 
 class Cheques extends Component {
