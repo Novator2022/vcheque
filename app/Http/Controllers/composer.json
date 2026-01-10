@@ -1,0 +1,6 @@
+{
+    "require": {
+        "mpdf/mpdf": "^8.0",
+        "alhimik1986/php-excel-templator": "^1.0"
+    }
+}

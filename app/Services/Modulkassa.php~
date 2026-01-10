@@ -1,0 +1,254 @@
+<?php
+
+namespace App\Services;
+
+use GuzzleHttp\Psr7;
+use GuzzleHttp\Exception\RequestException;
+use GuzzleHttp\Exception\GuzzleException;
+use GuzzleHttp\Client;
+use App\Cheque;
+use Log;
+
+class Modulkassa
+{
+    /**
+     * [protected description]
+     * @var [type]
+     */
+    protected $baseUrl;
+    protected $client;
+    protected $uuid;
+    protected $username;
+    protected $password;
+    protected $baseAuth;
+
+    protected $debug = false;
+    protected $associated = false;
+
+    protected $messages = [];
+
+
+    /**
+     * [__construct description]
+     */
+    public function __construct($debug = false, $auth = null)
+    {
+        $this->debug    = $debug;
+        $this->baseUrl  = env('MODULKASSA_URL', 'https://my.modulkassa.ru');
+
+        $this->uuid     = (empty($auth) || empty($auth["uid"]))      ? env('MODULKASSA_UUID', '9701137546') : $auth["uid"] ;
+        $this->username = (empty($auth) || empty($auth["login"]))    ? env('MODULKASSA_USER', 'ooo.omega.77@yandex.ru') : $auth["login"];
+        $this->password = (empty($auth) || empty($auth["password"])) ? env('MODULKASSA_PASSWORD', '1357Qet!') : $auth["password"];
+
+        Log::debug('Modulekassa API ' . json_encode($auth));
+        $this->client = new Client([
+            'base_uri' => $this->baseUrl
+        ]);
+
+        $this->baseAuth = ['auth' => [$this->username, $this->password]];
+    }
+
+    public function test()
+    {
+        $this->auth();
+        $this->status();
+    }
+
+    public function cheque(Cheque $cheque)
+    {
+        if (!$this->associated) {
+            $this->auth();
+        }
+        $request = $this->prepareRequest();
+
+        // \Log::debug($cheque->organisation);
+
+        $data = [
+            "id" => $cheque->doc_num,
+            "docNum" => $cheque->id,
+            "docType" => "SALE",
+            "checkoutDateTime" => now()->format('Y-m-d') . 'T' . now()->format('H:i:s'),
+            // "email" => $cheque->user->email,
+            "printReceipt" => true,
+            "textToPrint" => null,
+            "cashierName" => $cheque->organisation->data["cashier"] ?? '',
+            "cashierInn" => null,
+            "cashierPosition" => 'кассир',
+            "responseURL" => route('modulkassa.callback', [$cheque]),
+            "taxMode" => $cheque->organisation->is_usn15 ? "SIMPLIFIED_WITH_EXPENSE" : "COMMON",
+            // "taxMode" => "COMMON",
+            "clientName" => null,
+            "clientInn" => null,
+            "agentInfo" => null,
+            "inventPositions" => [],
+            "moneyPositions" => [
+                [
+                    "paymentType" => 'CASH',
+                    "sum" => 0,
+                ]
+            ]
+        ];
+
+        $sum = 0;
+
+        foreach ($cheque->data["positions"] as $pos) {
+            $ndsTag = "1102";
+            $nds = $pos["nds"] ?? 0.2;
+            if ($nds*100 == 10) {
+                $ndsTag = "1103";
+            } elseif ($nds*100 == 0) {
+                $ndsTag = "1105";
+            }
+            $sum += (float)$pos["amount"] * (float)$pos['quantity'];
+            $ndsSum = Modulkassa::calculateNds((float)$pos["amount"] * (float)$pos['quantity'], $nds);
+
+
+            if (empty($pos['nomenclature'])) {
+                continue;
+            }
+            $name = $pos["nomenclature"];
+
+            if ($ndsTag == "1105") {
+                $data["inventPositions"][] = [
+                    "barcode" => $pos["barcode"] ?? null,
+                    "name" => $name,
+                    "price" => (float)$pos["amount"],
+                    "discSum" => 0,
+                    "quantity" => (float)$pos["quantity"],
+                    "vatTag" => $ndsTag,
+                    "paymentObject" => "commodity",
+                    "paymentMethod" => "full_payment",
+                    "originCountryCode" => null,
+                    "customsDeclarationNumber" => null,
+                    "agentInfo" => null,
+                    "supplierInfo" => null,
+                ];
+            } else {
+                $data["inventPositions"][] = [
+                    "barcode" => $pos["barcode"] ?? null,
+                    "name" => $name,
+                    "price" => (float)$pos["amount"],
+                    "discSum" => 0,
+                    "quantity" => (float)$pos["quantity"],
+                    "vatSum" => (float)$ndsSum,
+                    "vatTag" => $ndsTag,
+                    "paymentObject" => "commodity",
+                    "paymentMethod" => "full_payment",
+                    "originCountryCode" => null,
+                    "customsDeclarationNumber" => null,
+                    "agentInfo" => null,
+                    "supplierInfo" => null,
+                ];
+            }
+        }
+
+        $data["moneyPositions"][0]["sum"] = $sum;
+
+        $request["json"] = $data;
+
+        try {
+
+            Log::debug('data to modulkassa: '. json_encode($data));
+            $responseJson = $this->sendRequest('POST', '/api/fn/v1/doc', $request, "print");
+            $cheque->modulkassa = $responseJson;
+            $cheque->status = 'inprogress';
+            $cheque->save();
+            return $responseJson;
+
+        } catch (RequestException $e) {
+            Log::error($e);
+            if ($e->hasResponse()) {
+                $responseJson = json_decode((string)($e->getResponse()->getBody()), true);
+                $cheque->modulkassa = $responseJson;
+                $cheque->status = 'failed';
+                $cheque->save();
+                return $responseJson;
+            }
+        }
+    }
+
+    public function chequeStatus(Cheque $cheque)
+    {
+        if (!$this->associated) {
+            $this->auth();
+        }
+        $request = $this->prepareRequest();
+        try {
+            $responseJson = $this->sendRequest('GET', '/api/fn/v1/doc/' . $cheque->doc_num . '/status', $request, "status");
+
+            $status = 'inprogress';
+            if ($responseJson->status == 'FAILED') {
+                $status = 'failed';
+            } elseif (in_array($responseJson->status, ['QUEUED', 'PANDING'])) {
+                $status = 'inprogress';
+            } elseif (in_array($responseJson->status, ['PRINTED', 'COMPLETED', 'WAIT_FOR_CALLBACK'])) {
+                $status = 'success';
+            }
+
+            $cheque->modulkassa = $responseJson;
+            $cheque->status = $status;
+            $cheque->save();
+
+            return $responseJson;
+        } catch (RequestException $e) {
+            Log::error('Modulkassa exception: ' . $e->getMessage());
+            // Log::error($e);
+            if ($e->hasResponse()) {
+                $responseJson = json_decode((string)($e->getResponse()->getBody()), true);
+                $cheque->modulkassa = $responseJson;
+                $cheque->status = 'failed';
+                $cheque->save();
+                return $responseJson;
+            }
+        }
+    }
+    public function getMessages()
+    {
+        return $this->messages;
+    }
+    public static function calculateNds($amount, $nds)
+    {
+        return round(100*$nds*($amount/(1+$nds)))/100;
+    }
+    protected function auth()
+    {
+        $request = $this->prepareRequest();
+        $request["debug"] = false;
+        $responseJson = $this->sendRequest('POST', '/api/fn/v1/associate/' . $this->uuid, $request, "auth");
+        $this->baseAuth = ['auth' => [$responseJson->userName, $responseJson->password]];
+        $this->associated = true;
+
+        $this->status();
+    }
+
+
+    protected function status()
+    {
+        $request = $this->prepareRequest();
+        $response = $this->sendRequest('GET', '/api/fn/v1/status', $request, "check kassa");
+    }
+
+    protected function prepareRequest()
+    {
+        $request = $this->baseAuth;
+        if ($this->debug) {
+            $request["debug"] = true;
+        }
+        return $request;
+    }
+
+    protected function sendRequest($method, $uri, $request, $name = null)
+    {
+        $response = $this->client->request($method, $uri, $request);
+        $responseJson = json_decode((string)$response->getBody());
+        $this->messages[] = [
+            "time"      => date("Y-m-d H:i:s"),
+            "type"      => empty($name) ? '' : $name,
+            "url"       => $method . ' ' . $uri,
+            "request"   => $request,
+            "response"  => $responseJson,
+        ];
+        Log::info('Modulkassa: '. (empty($name) ? '' : $name) . "\nRequest\n" . json_encode($request, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) . "\nResponse:\n" . json_encode($responseJson, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+        return $responseJson;
+    }
+}

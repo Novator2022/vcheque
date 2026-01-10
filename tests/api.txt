@@ -1,0 +1,88 @@
+АПИ реализовано по стандартам HTTP REST API.
+На данный момент хост http://vcheque.enginecon.ru. Рекомендуется сделать как отдельный параметр, так как хост возможно сместится на отдельный домен.
+Предлагается иметь 3 параметра настроект
+
+
+Авторизация:
+Необходимо сделать POST запрос на url /oauth/token
+Со следующими параметрами
+    'grant_type' => 'password'        - константа
+    'client_id' => CLIENT_ID,         - необходимо на равне с хостом ввести параметр и брать из собсвенных настроек
+    'client_secret' => CLIENT_SECRET  - необходимо на равне с хостом ввести параметр и брать из собсвенных настроек
+    'username' => email               - email логина в систему (выдадим)
+    'password' => password            - пароль входа в систему
+    'scope' => ''                     - пока не будем использовать, оставляем пустым
+
+В ответ прийдет json, в случае, когда все ок.
+
+{
+    "token_type": "Bearer",
+    "expires_in": 31622400,
+    "access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsImp0aSI6IjIzMWQ3N2JiOWNmMTg1OGI3Y2ExY2FmODM5NmFhYmY5NzlmZjQzYzZlYWI0MDU4YjkyY2EwNTFlMzdhNzRmNjEwZjVhZTExODI1OWRhYThlIn0.eyJhdWQiOiIyIiwianRpIjoiMjMxZDc3YmI5Y2YxODU4YjdjYTFjYWY4Mzk2YWFiZjk3OWZmNDNjNmVhYjQwNThiOTJjYTA1MWUzN2E3NGY2MTBmNWFlMTE4MjU5ZGFhOGUiLCJpYXQiOjE1NjY4Nzc0NDUsIm5iZiI6MTU2Njg3NzQ0NSwiZXhwIjoxNTk4NDk5ODQ1LCJzdWIiOiIxIiwic2NvcGVzIjpbXX0.ukFL_CXIuB8V4Kle3Njw7sofUwYXZGvcv2ZbjMw1-ohvi6aIusocU9QyB3MeDBT9YD0-g7ZjS7rp3BznVl-y9jI02objrufEo6wXgA7VdLFraAY3Q8TRQFJwVk6NBbNtf7AbLnpdCB3hLkZ5HDeduMP3V1w3lYsjnmZRUfeARn6lXICJN54C5vmgTFPlx6EpcZVqpcTrNqdgacGtOKtj1pTaPRKY9k0vuiYpXIJP7Y4Qu0mW0lWGujDlsPjFLOjo313fZTzjcOl46IlGK0QDbHy-ANbFY38GgbMpfEEc2MGt0gSvibJXBLnjtLngLVBYC4avrZuySg3LZtVbG0H3AVnDBOzCVNv-QH4PzZklYmuikT95mGV1uqm2ysK_QDMziH2etTiH42a-PUfpdyeWAV15HAHf4oHvNN8BX6Dk6aKruMv09uHnAFkaY-bCCseKFVTPLaZFz3smkvnsljsG2rGIdxqmju0jQmZERNFpQgLrpiveHLKWCgRF0U_4Gd9mZfSvAs-rxtTuQ1tN3wjs1RJMIJmr55rYIzmYrMO-X-oIPZn5DwRGPm2rKzXiabWQOGyJW9d-OuSyuRIzX5m5o7nDa87jnn-BtuBi3vYocSg1qyR15wDKvnIETfFEgMqBsiJowLSsGsp2cNWe0Op64LRV76Ce7vqnfCbaprKN1Jc",
+    "refresh_token": "def50200b105e2909874951dc686fb6fc967dca1fa1f1eb528dbdf55bdbeb1c8f7f06d6c09caa7db3b21a9eb7413cfb7e7c6a56f5b4f06ea7910a1acf764ace8f7ed92b5487b7871461392f9f4c9568f2027d98308b8d92c82b73d636f9e066c53b09ce7f4d53fa124759a5ba5e4ddcff50e6ec75c155e89e97030322f10de889bdc309ae02a045cd24affe0c3642b4f29c91b30c0abe58d612f2ec7e1e9d3f1778ca53c2d294caabbc2c440f0f794124d0ac4c7be09a498d65baa7d63c73448ed83e3ddae805d2a114d3fe965fc3e9342cf1aabfd07434e732613b2e79fa92fb195971dbd16e4493b5e7c2f8056443503ac7c5168b19de15ffab4e28662ffd1079c6f42674220504bbee87e2fa47a70b27488f81e29218b3fb6738716618f60ec3aeda7800a644b52af29ee563cd0fcbbf4edcbd391dafcb1ff9b69996d5848ee233a6b3ebc604d9e7dbc96329e69b474beec9487b97279aa05f2fbba06202b6e"
+}
+
+Где
+    * expires_in    - время жизни токена в секундах
+    * token_type    - тип токена
+    * access_token  - сам токен
+
+Все остальные запросы по АПИ нужно выполнять с использованием HTTP заголовка вида:
+    Authorization: [token_type] [access_token]
+
+Для примера выше, это будет выглядеть так:
+    Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsImp0aSI6IjIzMWQ3N2JiOWNmMTg1OGI3Y2ExY2FmODM5NmFhYmY5NzlmZjQzYzZlYWI0MDU4YjkyY2EwNTFlMzdhNzRmNjEwZjVhZTExODI1OWRhYThlIn0.eyJhdWQiOiIyIiwianRpIjoiMjMxZDc3YmI5Y2YxODU4YjdjYTFjYWY4Mzk2YWFiZjk3OWZmNDNjNmVhYjQwNThiOTJjYTA1MWUzN2E3NGY2MTBmNWFlMTE4MjU5ZGFhOGUiLCJpYXQiOjE1NjY4Nzc0NDUsIm5iZiI6MTU2Njg3NzQ0NSwiZXhwIjoxNTk4NDk5ODQ1LCJzdWIiOiIxIiwic2NvcGVzIjpbXX0.ukFL_CXIuB8V4Kle3Njw7sofUwYXZGvcv2ZbjMw1-ohvi6aIusocU9QyB3MeDBT9YD0-g7ZjS7rp3BznVl-y9jI02objrufEo6wXgA7VdLFraAY3Q8TRQFJwVk6NBbNtf7AbLnpdCB3hLkZ5HDeduMP3V1w3lYsjnmZRUfeARn6lXICJN54C5vmgTFPlx6EpcZVqpcTrNqdgacGtOKtj1pTaPRKY9k0vuiYpXIJP7Y4Qu0mW0lWGujDlsPjFLOjo313fZTzjcOl46IlGK0QDbHy-ANbFY38GgbMpfEEc2MGt0gSvibJXBLnjtLngLVBYC4avrZuySg3LZtVbG0H3AVnDBOzCVNv-QH4PzZklYmuikT95mGV1uqm2ysK_QDMziH2etTiH42a-PUfpdyeWAV15HAHf4oHvNN8BX6Dk6aKruMv09uHnAFkaY-bCCseKFVTPLaZFz3smkvnsljsG2rGIdxqmju0jQmZERNFpQgLrpiveHLKWCgRF0U_4Gd9mZfSvAs-rxtTuQ1tN3wjs1RJMIJmr55rYIzmYrMO-X-oIPZn5DwRGPm2rKzXiabWQOGyJW9d-OuSyuRIzX5m5o7nDa87jnn-BtuBi3vYocSg1qyR15wDKvnIETfFEgMqBsiJowLSsGsp2cNWe0Op64LRV76Ce7vqnfCbaprKN1Jc
+
+
+Настройки
+HOST            - http://vcheque.enginecon.ru
+CLIENT_ID       - 2
+CLIENT_SECRET   - 9hCaFkOAczikOp8hIUv1foROMKuFl9UFqXBtrBWW
+
+Доступ
+email       - api@vcheque.ru
+password    - 123123
+
+Доступные ресурсы
+/api/cheque         - Чеки
+/api/organisation   - Организации
+/api/contractor     - Контрагенты
+/api/nomenclature   - Номенкулатура
+
+Чеки
+Структура чека:
+    "id":   идентификато чека во внутренней системе
+    "created_at": "2019-08-20 11:13:09" - дата создание
+    "updated_at": "2019-08-20 11:13:09" - дата последнего изменения чека
+    "status": "request"                 - статус чека
+    "data": {                           - Далее структура в JSON виде, у нее нет жесткой формации (что видно по XML файлу) все необходитмые поля можно добавлять здесь. Сейчас там присутсвует такие поля в таком виде
+        "contractor": " ООО клиент пупкин"
+        "positions": [
+            {
+                "nds": 20,
+                "name": null,
+                "amount": "1200",
+                "quantity": "2",
+                "nomenclature": "карандаш",
+                "nomenclature_id": null
+            }
+            ...
+        ]
+    },
+    "user_id": 1                        - идентификатор пользовотеля, на кого выписан чек
+    "user":                             - слинкованные данные по user_id
+    "organisation_id": 1,               - идентификатор организации, выдавшей чек
+    "organisation":                     - подгруженная структура организации
+
+GET /api/cheque - получение списка чеков
+GET /api/cheque/{id} - получение отдельного чека по его ID
+POST /api/cheque - создание чека
+PUT /api/cheque/{id} - редактирование чека
+
+
+Все параметры передаются как HTTP QUERY параметры
+к примеру
+/api/cheque?status=request - передает параметр status в запрос списка чеков (отфильтрует по этому статусу)
+
+По остальным ресурсам аналогично, различается структура, но каждый имеет объет с именем data или meta - это JSON тип данных, для легкого расширения описания объекта, так как не известно заранее что нужно будет точно
+Я так вижу, что в поля дата можно передавать и сохранять там данные о ссылке на объект в 1C и другие параметры.

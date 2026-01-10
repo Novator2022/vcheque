@@ -1,0 +1,34 @@
+parameters:
+	level: 9
+	treatPhpDocTypesAsCertain: false
+	fileExtensions:
+		- php
+	paths:
+		- src/
+	excludePaths:
+		analyseAndScan:
+			- vendor/
+	strictRules:
+		allRules: false
+		booleansInConditions: true
+		closureUsesThis: true
+		disallowedConstructs: false
+		disallowedLooseComparison: false
+		matchingInheritedMethodNames: true
+		noVariableVariables: true
+		numericOperandsInArithmeticOperators: true
+		overwriteVariablesWithLoop: true
+		requireParentConstructorCall: true
+		strictCalls: true
+		switchConditionsMatchingType: true
+		uselessCast: true
+	exceptions:
+		check:
+			missingCheckedExceptionInThrows: true
+			tooWideThrowType: true
+		implicitThrows: false
+	ignoreErrors:
+		- '#Only booleans are allowed in (a negated boolean|a ternary operator condition|an elseif condition|an if condition|&&|\|\|), (bool|false|int(<[0-9, max]+>)?|true|null|\|)+ given.*#'
+includes:
+	- vendor/phpstan/phpstan-strict-rules/rules.neon
+	- vendor/phpstan/phpstan/conf/bleedingEdge.neon
