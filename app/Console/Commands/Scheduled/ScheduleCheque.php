@@ -119,7 +119,7 @@ class ScheduleCheque extends Command
                     }
 
                     $data["positions"][] = [
-                        "nds" => $position["nds"] ?? 0.2,
+                        "nds" => $position["nds"] ?? 0.22,
                         "name" => $position["nomenclature"],
                         "amount" => $position["amount_from"],
                         "quantity" => $position["quantity_from"],
