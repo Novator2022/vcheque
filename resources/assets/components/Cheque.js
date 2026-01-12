@@ -133,7 +133,7 @@ class Cheque extends Component {
                 text: item.name
             }
         })
-        const nds = (organisation && organisation.data.nds)?organisation.data.nds:0;
+        let nds = 0; //(organisation && organisation.data.nds)?organisation.data.nds:0;
         let sums = {
             amount:0,
             nds:0,
@@ -141,6 +141,7 @@ class Cheque extends Component {
             positions:item.data.length
         }
         if(item.data.positions) item.data.positions.map( (item) => {
+            nds = item.nds;
             sums.amount+= parseFloat(item.amount)*parseFloat(item.quantity);
             sums.nds += calculateNds(parseFloat(item.amount)*parseFloat(item.quantity), nds*100);
             sums.quantity += parseInt(item.quantity);
