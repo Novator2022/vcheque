@@ -11,6 +11,7 @@ use App\Cheque;
 use App\Organisation;
 use App\Nomenclature;
 use App\Jobs\ModulkassaJob;
+use App\Jobs\CloudpaymentsJob;
 use App\Services\Modulkassa;
 use App\Jobs\ExportJob;
 use App\Transactions;
@@ -176,33 +177,15 @@ class ChequeObserver
         }
 
         if ($cheque->organisation->modulkassa == true) {
-            // $delay = 0;
-            // $currentHour = intval(now()->format('H'));
-
-            // if ($cheque->type != Cheque::TYPE_MANUAL) {
-            //     Log::debug('Check work time ' . now() . ' between ' . env('WORK_TIME_START', 9) . ' and ' . env('WORK_TIME_END', 20) . ' [hour is ' . $currentHour . ']');
-
-            //     if ($currentHour >= env('WORK_TIME_END', 20)) {
-            //         $delay = 24 - $currentHour + env('WORK_TIME_START', 9);
-            //         Log::debug('delay job on next day in ' . $delay . ' hours');
-            //     } elseif ($currentHour < env('WORK_TIME_START', 9)) {
-            //         $delay = env('WORK_TIME_START', 9) - $currentHour;
-            //         Log::debug('delay job until morning in ' . $delay . ' hours');
-            //     }
-            // }
-
-            // if ($delay == 0) {
-                $cheque->status = Cheque::STATUS_REQUEST;
-                $cheque->save();
-                ModulkassaJob::dispatch($cheque)
-                    ->onConnection('redis');
-            // } else {
-            //     ModulkassaJob::dispatch($cheque)
-            //         ->onConnection('redis')
-            //         ->delay(now()->addHours($delay));
-            // }
-
-            // $cheque->user->notify((new ChequeInprogress($cheque)));
+            $cheque->status = Cheque::STATUS_REQUEST;
+            $cheque->save();
+            ModulkassaJob::dispatch($cheque)
+                ->onConnection('redis');
+        } elseif ($cheque->organisation->cloudpayments == true) {
+            $cheque->status = Cheque::STATUS_REQUEST;
+            $cheque->save();
+            CloudpaymentsJob::dispatch($cheque)
+                ->onConnection('redis');
         } else {
             $export = new ChequeXML(Cheque::where('organisation_id', $cheque->organisation_id)->get());
             $file = $export->store(($cheque->organisation->data && isset($cheque->organisation->data["inn"])) ? $cheque->organisation->data["inn"] : '1234567');

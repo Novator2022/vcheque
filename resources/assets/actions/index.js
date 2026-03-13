@@ -1,6 +1,11 @@
 import axios from 'axios';
 import { LIST, CREATE, UPDATE, REMOVE, SUCCESS, FAILURE, REQUEST } from '../constants';
 
+function getCsrfToken() {
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    return meta ? meta.getAttribute('content') : '';
+}
+
 export function modelRest(m,a,d,c=function(){},f=()=>{}){
     return (dispatch) => {
         let u = `/${m}`,
@@ -31,10 +36,14 @@ export function modelRest(m,a,d,c=function(){},f=()=>{}){
             type: a,
             status: REQUEST
         });
-        axios( {
+        axios({
             url: u,
             method: t,
-            data: p
+            data: p,
+            withCredentials: true,
+            headers: {
+                'X-CSRF-TOKEN': getCsrfToken()
+            }
         }).then((response) => {
                 c(response);
                 dispatch({

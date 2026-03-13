@@ -63,6 +63,7 @@ export class FileUpload extends Component {
         e.preventDefault();
 
         const {url, name, onUploaded, onFailed, onBefore} = this.props;
+        const fileInput = e.target;
         const p = new FormData();
         p.append(name, e.target.files[0]);
         if (onBefore) {
@@ -71,7 +72,7 @@ export class FileUpload extends Component {
 
         const ax = axios( {
             url: url,
-            headers: { 'Content-Type': 'multipart/form-data' },
+            headers: { 'Content-Type': 'multipart/form-data', 'X-CSRF-TOKEN': document.getElementsByTagName("meta")['csrf-token'].content },
             method: 'POST',
             data: p
         }).then((response) => {
@@ -80,8 +81,10 @@ export class FileUpload extends Component {
             }
         }).catch((error) => {
             if(onFailed) {
-                onFailed(error);
+                onFailed(error.response || error);
             }
+
+            fileInput.value = '';
         })
     }
     render(){

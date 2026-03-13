@@ -37,6 +37,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/home/{page?}', 'HomeController@index')->name('home');
     Route::resource('/user', 'UserController');
     Route::resource('/cheque', 'ChequeController');
+    Route::any('/cheque/stats', 'ChequeController@stats');
     Route::get('/cheque/view/{id}', 'ChequeController@view')->name('view_cheque');
     Route::get('/cheque/view_pdf/{id}', 'ChequeController@view_pdf')->name('view_cheque_pdf');
     Route::post('/cheque/{cheque}/print', 'ChequeController@print')->name('cheque_print');
@@ -95,6 +96,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 Route::get('modulkassa/cheque/{cheque}', 'ModulekassaController@callback')->name('modulkassa.callback');
 // Route::post('modulkassa/cheque/{cheque}', 'ModulekassaController@callback');
+
+Route::post(
+    'webhooks/cloudpayments/receipt',
+    'CloudpaymentsWebhookController@receipt'
+)->name('cloudpayments.webhook.receipt');
 
 Route::middleware(['auth:api'])->group(function () {
     Route::resource('/api/cheque', 'ChequeController');

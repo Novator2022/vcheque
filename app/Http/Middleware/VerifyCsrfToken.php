@@ -21,6 +21,7 @@ class VerifyCsrfToken extends Middleware
     protected $except = [
         '/api/*',
         '/notify/incoming/yandex_money',
-        '/printer/*'
+        '/printer/*',
+        '/webhooks/*',
     ];
 }

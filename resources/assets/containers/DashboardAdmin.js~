@@ -50,12 +50,6 @@ class DashboardAdmin extends Component {
                     VDate.truncDate(dates[0]),
                     VDate.truncDate(dates[1], true)
                 ]
-            },
-            stats: {
-                loading: false,
-                count: 0,
-                amount: 0,
-                byDays: [] // [{date, count, amount}]
             }
         };
     }
@@ -66,54 +60,7 @@ class DashboardAdmin extends Component {
         if (!props.cheques.data.length) this.props.action('cheque', 'LIST', search);
         if (!props.contractors.data.length) this.props.action('contractor', 'LIST', search);
         if (!props.organisations.data.length) this.props.action('organisation', 'LIST');
-
-        this.fetchStats(search.dates); // 👈 новое
     }
-
-    getCsrfToken() {
-        const meta = document.querySelector('meta[name="csrf-token"]');
-        return meta ? meta.getAttribute('content') : '';
-    }
-
-    fetchStats = async (dates) => {
-        if (!dates || dates.length < 2) return;
-
-        try {
-            this.setState(prev => ({
-                stats: { ...prev.stats, loading: true }
-            }));
-
-            const response = await fetch('/cheque/stats', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': this.getCsrfToken()
-                },
-                body: JSON.stringify({
-                    date_from: dates[0],
-                    date_to: dates[1]
-                })
-            });
-
-            const data = await response.json();
-
-            this.setState({
-                stats: {
-                    loading: false,
-                    count: data.count || 0,
-                    amount: data.amount || 0,
-                    byDays: data.byDays || []
-                }
-            });
-
-        } catch (e) {
-            console.error('Stats fetch error', e);
-            this.setState(prev => ({
-                stats: { ...prev.stats, loading: false }
-            }));
-        }
-    };
-
     handleSearch = (e,{name,value})=>{
         let {search} = this.state;
         search[name] = value;
@@ -148,75 +95,47 @@ class DashboardAdmin extends Component {
         );
         ;
     }
-
     handleSearchDate = (dates)=>{
         let {search} = this.state;
 
-        if (dates && dates.length > 1 && typeof dates[0] === 'object') {
-            const formatted = [
-                VDate.truncDate(dates[0]),
-                VDate.truncDate(dates[1], true)
-            ];
+        if (dates==null) {
+            // search['dates'] = '';
+            // this.setState({search: search},
+            //     ()=>{
+            //         this.props.action(
+            //             'cheque',
+            //             LIST,
+            //             search,
+            //             (response)=>{},
+            //             (error)=>{}
+            //         )
+            //     }
+            // );
+        } else if (dates && dates.length>1) {
+            if (typeof(dates[0]) == 'object') {
+                search['dates'] = [
+                    VDate.truncDate(dates[0]),
+                    VDate.truncDate(dates[1], true)
+                ];
 
-            search['dates'] = formatted;
-
-            this.setState({search}, () => {
-                this.fetchStats(formatted); // 👈 новый запрос
-            });
+                this.setState({search: search},
+                    ()=>{
+                        this.props.action(
+                            'cheque',
+                            LIST,
+                            search,
+                            (response)=>{},
+                            (error)=>{}
+                        )
+                    }
+                );
+            }
         }
     }
-
-    // handleSearchDate = (dates)=>{
-    //     let {search} = this.state;
-
-    //     if (dates==null) {
-    //         // search['dates'] = '';
-    //         // this.setState({search: search},
-    //         //     ()=>{
-    //         //         this.props.action(
-    //         //             'cheque',
-    //         //             LIST,
-    //         //             search,
-    //         //             (response)=>{},
-    //         //             (error)=>{}
-    //         //         )
-    //         //     }
-    //         // );
-    //     } else if (dates && dates.length>1) {
-    //         if (typeof(dates[0]) == 'object') {
-    //             search['dates'] = [
-    //                 VDate.truncDate(dates[0]),
-    //                 VDate.truncDate(dates[1], true)
-    //             ];
-
-    //             this.setState({search: search},
-    //                 ()=>{
-    //                     this.props.action(
-    //                         'cheque',
-    //                         LIST,
-    //                         search,
-    //                         (response)=>{},
-    //                         (error)=>{}
-    //                     )
-    //                 }
-    //             );
-    //         }
-    //     }
-    // }
     render() {
         const {expensetypes,organisations,users,cheques,contractors} = this.props;
         const {search} = this.state;
         const {dates} = search;
-        const {stats} = this.state;
-
-        Highcharts.setOptions({
-            lang: {
-                weekdays: [
-                    'воскресенье', 'понедельник', 'вторник',
-                    'среда', 'четверг', 'пятница', 'суббота'
-                ]
-            }
-        });
 
         const monthDays = () => {
             if( dates ){
@@ -237,51 +156,59 @@ class DashboardAdmin extends Component {
                 return ret;
             }
         }
+        let chequesCountByDay = [];
+        let chequesAmountByDay = [];
+        let days = monthDays();
 
-        // console.log(stats.byDays);
+        // console.log(days);
+        // console.log('imhere');
 
-        const chequesCountByDay = stats.byDays.map(d => [
-            new Date(d.date).getTime(), // важно
-            d.count
-        ]);
+        for(let i in days ){
+            const day = days[i];
+            chequesAmountByDay.push( [
+                day,
+                cheques.data.filter((item)=>{return (item.deleted_at == null && (new Date(item.created_at)).getTime()%day.getTime() < 1000*24*60*60);}).reduce( (accumulator,item) => {
+                        let sum = 0;
+                        if(item.data && item.data.positions)item.data.positions.map( (position,i) => {
+                            sum+=position.amount*position.quantity;
+                        })
+                        accumulator += sum;
+                        return accumulator;
+                    },0)
+            ] );
+            chequesCountByDay.push( [
+                day,
+                cheques.data.filter((item)=>{return (item.deleted_at == null && (new Date(item.created_at)).getTime()%day.getTime() < 1000*24*60*60);}).length
+            ] );
 
-        const chequesAmountByDay = stats.byDays.map(d => [
-            new Date(d.date).getTime(), // важно
-            d.amount
-        ]);
-
+        }
         const chartOptions = {
             title: {
-                text: 'Количество по дням'
+                text: trans('messages.dashboards.chart_title')
             },
 
             subtitle: {
                 text: trans('messages.dashboards.this_month')
             },
-            xAxis: {
+            yAxis: {
                 type: 'datetime',
-                title: {
-                    text: 'Дата'
+                dateTimeLabelFormats: { // don't display the dummy year
+                    month: '%e. %b',
+                    year: '%b'
                 },
-                labels: {
-                    format: '{value:%d.%m}'
+                title: {
+                    text: trans('messages.day')
                 }
             },
             yAxis: {
                 title: {
-                    text: 'Количество чеков'
+                    text: 'Кол-во/Сумма'
                 },
-                min: 0,
-                allowDecimals: false
+                min: 0
             },
             tooltip: {
-                useHTML: true,
-                formatter: function () {
-                    return `
-                        <b>${Highcharts.dateFormat('%d.%m.%Y (%A)', this.x)}</b><br/>
-                        Чеков: <b>${this.y}</b>
-                    `;
-                }
+                headerFormat: '<b>{series.name}</b><br>',
+                pointFormat: '{point.x}: {point.y:.2f}'
             },
 
             plotOptions: {
@@ -317,36 +244,31 @@ class DashboardAdmin extends Component {
         }
         const chartAmountOptions = {
             title: {
-                text: 'Сумма по дням'
+                text: trans('messages.dashboards.chart_title')
             },
 
             subtitle: {
                 text: trans('messages.dashboards.this_month')
             },
-            xAxis: {
+            yAxis: {
                 type: 'datetime',
-                title: {
-                    text: 'Дата'
+                dateTimeLabelFormats: { // don't display the dummy year
+                    month: '%e. %b',
+                    year: '%b'
                 },
-                labels: {
-                    format: '{value:%d.%m}'
+                title: {
+                    text: trans('messages.day')
                 }
             },
             yAxis: {
                 title: {
-                    text: 'Сумма чеков'
+                    text: 'Кол-во/Сумма'
                 },
-                min: 0,
-                allowDecimals: false
+                min: 0
             },
             tooltip: {
-                useHTML: true,
-                formatter: function () {
-                    return `
-                        <b>${Highcharts.dateFormat('%d.%m.%Y (%A)', this.x)}</b><br/>
-                        Сумма: <b>${Highcharts.numberFormat(this.y, 0, '.', ' ')} ₽</b>
-                    `;
-                }
+                headerFormat: '<b>{series.name}</b><br>',
+                pointFormat: '{point.x}: {point.y:.2f}'
             },
 
             plotOptions: {
@@ -408,19 +330,26 @@ class DashboardAdmin extends Component {
                         }
                     </Grid.Column>
                     <Grid.Column width={4}>
-                        {stats.loading
+                        {cheques.fetching
                             ?<Dimmer active><Loader/></Dimmer>
                             :<Statistic color="grey">
-                                <Statistic.Value><Icon name="money bill alternate outline"/>{numeral(stats.count).format('0,0')}</Statistic.Value>
+                                <Statistic.Value><Icon name="money bill alternate outline"/>{numeral(cheques.data.length).format('0,0')}</Statistic.Value>
                                 <Statistic.Label>{trans('messages.cheques.total_count')}</Statistic.Label>
                             </Statistic>
                         }
                     </Grid.Column>
                     <Grid.Column width={8}>
-                        {stats.loading
+                        {cheques.fetching
                             ?<Dimmer active><Loader/></Dimmer>
                             :<Statistic color="blue">
-                                <Statistic.Value>{numeral(stats.amount).format('0,0.00') } <Icon name="ruble"/></Statistic.Value>
+                                <Statistic.Value>{numeral(cheques.data.reduce( (accumulator,item) => {
+                                        let sum = 0;
+                                        if(item.data && item.data.positions)item.data.positions.map( (position,i) => {
+                                            sum+=position.amount*position.quantity;
+                                        })
+                                        accumulator += sum;
+                                        return accumulator;
+                                    },0)).format('0,0.00') } <Icon name="ruble"/></Statistic.Value>
                                 <Statistic.Label>{trans('messages.cheques.total_amount')}</Statistic.Label>
                             </Statistic>
                         }

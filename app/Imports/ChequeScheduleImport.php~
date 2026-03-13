@@ -13,7 +13,6 @@ use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithMultipleSheets;
 use Maatwebsite\Excel\Concerns\WithCalculatedFormulas;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Request;
 use Illuminate\Support\Collection;
 
@@ -21,33 +20,10 @@ class ChequeScheduleImport implements ToCollection, WithMultipleSheets, WithCalc
 {
     protected $user;
     protected $no_nds;
-    protected $import_id = null;
-    protected $source = null;
-    protected $email = null;
-    protected $periodic;
-
-    public function __construct($user, $no_nds = false, $params = [])
+    public function __construct($user, $no_nds = false)
     {
         $this->user = $user;
         $this->no_nds = $no_nds;
-
-        if (!empty($params['import_id'])) {
-            $this->import_id = $params['import_id'];
-        }
-
-        if (!empty($params['source'])) {
-            $this->source = $params['source'];
-        }
-
-        if (!empty($params['email'])) {
-            $this->email = $params['email'];
-        }
-
-        if (!empty($params['periodic'])) {
-            $this->periodic = $params['periodic'];
-        } else {
-            $this->periodic = ChequeSchedule::PERIODIC_DAYLY;
-        }
     }
 
     public function sheets(): array
@@ -65,42 +41,13 @@ class ChequeScheduleImport implements ToCollection, WithMultipleSheets, WithCalc
 
     public function collection_date(Collection $rows)
     {
-        // Шаг 1: парсим все чеки в массив, без записи в БД.
-        // Если данные невалидны — исключение бросается здесь, до транзакции.
-        $cheques = $this->parseDateRows($rows);
-
-        // Шаг 2: всё или ничего — либо все чеки запишутся, либо ни один.
-        DB::transaction(function () use ($cheques) {
-            foreach ($cheques as $cheque) {
-                Log::debug('ChequeSchedule -- start');
-                try {
-                    $cs = ChequeSchedule::create($cheque['payload']);
-                } catch (\Exception $e) {
-                    Log::debug($e->getMessage());
-                    throw $e; // пробрасываем, чтобы транзакция откатилась
-                }
-                Log::debug('ChequeSchedule -- end');
-                Log::debug('Created ChequeSchedule: ' . json_encode($cs));
-            }
-        });
-    }
-
-    /**
-     * Парсит строки из "датового" формата файла.
-     * Только чтение данных и валидация — никаких create() внутри.
-     *
-     * @return array[] массив ['payload' => [...]] для ChequeSchedule::create()
-     * @throws \Exception
-     */
-    private function parseDateRows(Collection $rows)
-    {
         $user = $this->user;
         $no_nds = $this->no_nds;
         $nomenclature = null;
         $quantity = null;
         $amount = null;
         $date = null;
-        $periodic = $this->periodic;
+        $periodic = ChequeSchedule::PERIODIC_ONCE;
         $organisationName = null;
         $contractorName = null;
         $sf = null;
@@ -108,18 +55,10 @@ class ChequeScheduleImport implements ToCollection, WithMultipleSheets, WithCalc
         $data = [];
         $organisation = null;
 
-        $cheques = [];
-
         $flag_in_cheque = false;
         $skip = 2;
-        $cheque_num = 0;
-
         foreach ($rows as $row) {
             if ($skip-- > 0) continue;
-
-            if (is_numeric($row[0])) {
-                $cheque_num = $row[0];
-            }
 
             foreach ($row as $rindex => $row_value) {
                 $row[$rindex] = trim(preg_replace('/\s+/sim', ' ', $row_value));
@@ -131,17 +70,17 @@ class ChequeScheduleImport implements ToCollection, WithMultipleSheets, WithCalc
                 continue;
             }
 
-            if (($row[0] == 'Итоговая сумма чека:') || ($row[0] == 'Итого сумма чека:')) {
+            if ($row[0] == 'Итоговая сумма чека:') {
                 // make cheque schedule
-                \Log::debug('<pre>');
-                \Log::debug($user);
-                \Log::debug($organisation ? $organisation->name : false);
-                \Log::debug($data);
-                \Log::debug('</pre>');
+                // print '<pre>';
+                // // print_r($user);
+                // print_r($organisation ? $organisation->name : false);
+                // print_r($data);
+                // print '</pre>';
 
                 if (!empty($user) && !empty($organisation) && !empty($data)) {
-                    Log::debug('Checks:' . "\n\tuser:\t" . json_encode($user) .  "\n\torganisation:\t" . json_encode($organisation) . "\n\tdata:\t" . json_encode($data));
-                    Log::debug($data);
+                    // Log::debug('Checks:' . "\n\tuser:\t" . json_encode($user) .  "\n\torganisation:\t" . json_encode($organisation) . "\n\tdata:\t" . json_encode($data));
+                    // Log::debug($data);
 
                     if ($user->id == 29) {
                         $amountTotal = 0;
@@ -150,33 +89,24 @@ class ChequeScheduleImport implements ToCollection, WithMultipleSheets, WithCalc
                         }
 
                         if ($amountTotal > 100000) {
-                            throw new \Exception("Чек №" . $cheque_num . " - ошибка загрузки - сумма чека превышает 100 000", 2);
+                            throw new \Exception("Ошибка загрузки - сумма чека превышает 100 000", 2);
                         }
                     }
 
-                    foreach ($data['positions'] as $data_item) {
-                        if (((float)$data_item['quantity_from'] <= 0) || ((float)$data_item['quantity_to'] <= 0)) {
-                            throw new \Exception("Чек №" . $cheque_num . " - ошибка загрузки - количество <= 0", 2);
-                        }
-                    }
+                    $cs = ChequeSchedule::create([
+                        'user_id' =>$user->id,
+                        'expense_type_id' => $organisation->expense_type_id,
+                        'organisation_id' => $organisation->id,
+                        'data' => $data,
+                        'period_start' => $date,
+                        'period_end' => $date,
+                        'periodic' => $periodic,
+                        'updated_at' => '2000-01-01 00:00:00',
+                        'no_nds' => $no_nds ? 1 : 0,
+                        'email' => $email ?? null
+                    ]);
 
-                    // Собираем payload, но не сохраняем — это будет в транзакции
-                    $cheques[] = [
-                        'payload' => [
-                            'user_id'          => $user->id,
-                            'expense_type_id'  => $organisation->expense_type_id,
-                            'organisation_id'  => $organisation->id,
-                            'data'             => $data,
-                            'period_start'     => $date,
-                            'period_end'       => $date,
-                            'periodic'         => $periodic,
-                            'updated_at'       => '2000-01-01 00:00:00',
-                            'no_nds'           => $no_nds ? 1 : 0,
-                            'email'            => $email ?? $this->email,
-                            'import_id'        => $this->import_id,
-                            'source'           => $this->source,
-                        ],
-                    ];
+                    Log::debug('Created ChequeSchedule: ' . json_encode($cs));
                 }
 
                 $nomenclature = null;
@@ -248,56 +178,18 @@ class ChequeScheduleImport implements ToCollection, WithMultipleSheets, WithCalc
                 Log::debug('ChequeScheduleImport[data]: '. json_encode($data, JSON_UNESCAPED_UNICODE));
 
                 $organisationName = trim(str_replace(['ООО', 'с НДС:', 'без НДС:'], '', $organisationName));
-                $organisationName = preg_replace('/(\s*-\s*\d+)/sim', '', $organisationName);
-                $organisationName = trim(str_replace('"', '', $organisationName));
-                // Log::debug($organisationName);
                 $organisation = Organisation::where("name", "like", "%{$organisationName}%")->first();
-                // Log::debug($organisation);
-
-                if (!$organisation) {
-                    throw new \Exception("Чек №" . $cheque_num . " - ошибка загрузки - не найдена организация " . $organisationName, 2);
-                }
-
                 Log::debug('ChequeScheduleImport[organisation][' . $organisationName . ']: ' . json_encode($organisation, JSON_UNESCAPED_UNICODE));
             }
         }
-
-        return $cheques;
     }
 
     public function collection(Collection $rows)
     {
-        \Log::debug(__FILE__ . ' - ' . __LINE__);
-        \Log::debug(trim($rows[0][0]));
-        \Log::debug('Кликните по этой ячейке и скачайте файл "порядок работы" с инструкцией по заполнению данной заявки');
-
         if ((isset($rows[0][0])) && (trim($rows[0][0]) == 'Кликните по этой ячейке и скачайте файл "порядок работы" с инструкцией по заполнению данной заявки')) {
-            \Log::debug(__FILE__ . ' - ' . __LINE__);
             return $this->collection_date($rows);
         }
 
-        // Шаг 1: парсим все чеки в массив, без записи в БД.
-        // Если данные невалидны — исключение бросается здесь, до транзакции.
-        $cheques = $this->parseRows($rows);
-
-        // Шаг 2: всё или ничего — либо все чеки запишутся, либо ни один.
-        DB::transaction(function () use ($cheques) {
-            foreach ($cheques as $cheque) {
-                $cs = ChequeSchedule::create($cheque['payload']);
-                Log::debug('Created ChequeSchedule: ' . json_encode($cs));
-            }
-        });
-    }
-
-    /**
-     * Парсит строки из основного формата файла.
-     * Только чтение данных и валидация — никаких create() внутри.
-     *
-     * @return array[] массив ['payload' => [...]] для ChequeSchedule::create()
-     * @throws \Exception
-     */
-    private function parseRows(Collection $rows)
-    {
         $first = true;
 
         $email = null;
@@ -314,22 +206,14 @@ class ChequeScheduleImport implements ToCollection, WithMultipleSheets, WithCalc
         $upd = null;
         $sf = null;
         $email = null;
-        $data = [];
+        $data =[];
         $organisation = null;
         $expenseType = null;
-
-        $cheques = [];
-        $cheque_num = 0;
 
         $i = 0;
         foreach ($rows as $row) {
             // Log::debug('row[' . (++$i) . ']: ' . $row[0] . '{' . (mb_strtolower($row[0]) == 'итого' ? 'итого' : 'wait_for') . '}');
             if (!empty($row[0])) {
-
-                if (is_numeric($row[0])) {
-                    $cheque_num = $row[0];
-                }
-
                 if ($first) {
                     $first = false;
                     continue;
@@ -347,31 +231,24 @@ class ChequeScheduleImport implements ToCollection, WithMultipleSheets, WithCalc
                             }
 
                             if ($amountTotal > 100000) {
-                                throw new \Exception("Чек №" . $cheque_num . " - ошибка загрузки - сумма чека превышает 100 000", 2);
+                                throw new \Exception("Ошибка загрузки - сумма чека превышает 100 000", 2);
                             }
                         }
 
-                        foreach ($data['positions'] as $data_item) {
-                            if (((float)$data_item['quantity_from'] <= 0) || ((float)$data_item['quantity_to'] <= 0)) {
-                                throw new \Exception("Чек №" . $cheque_num . " - ошибка загрузки - количество <= 0", 2);
-                            }
-                        }
+                        $cs = ChequeSchedule::create([
+                            'user_id' =>$user->id,
+                            'expense_type_id' => $organisation->expense_type_id,
+                            'organisation_id' => $organisation->id,
+                            'data' => $data,
+                            'period_start' => $period_from,
+                            'period_end' => $period_to,
+                            'periodic' => $periodic,
+                            'updated_at' => '2000-01-01 00:00:00',
+                            'no_nds' => $no_nds ? 1 : 0,
+                            'email' => $email ?? null
+                        ]);
 
-                        // Собираем payload, но не сохраняем — это будет в транзакции
-                        $cheques[] = [
-                            'payload' => [
-                                'user_id'          => $user->id,
-                                'expense_type_id'  => $organisation->expense_type_id,
-                                'organisation_id'  => $organisation->id,
-                                'data'             => $data,
-                                'period_start'     => $period_from,
-                                'period_end'       => $period_to,
-                                'periodic'         => $periodic,
-                                'updated_at'       => '2000-01-01 00:00:00',
-                                'no_nds'           => $no_nds ? 1 : 0,
-                                'email'            => $email ?? null,
-                            ],
-                        ];
+                        Log::debug('Created ChequeSchedule: ' . json_encode($cs));
                     }
 
                     $nomenclature = null;
@@ -384,7 +261,7 @@ class ChequeScheduleImport implements ToCollection, WithMultipleSheets, WithCalc
                     $contractorName = null;
                     $upd = null;
                     $sf = null;
-                    $data = [];
+                    $data =[];
                     $organisation = null;
                     $expenseType = null;
                 }
@@ -409,6 +286,8 @@ class ChequeScheduleImport implements ToCollection, WithMultipleSheets, WithCalc
             $upd = empty($row[11]) ? $upd : $row[11];
             $sf = empty($row[12]) ? $sf : $row[12];
             $email = empty($row[13]) ? $sf : $row[13];
+
+
 
             $contractor = Contractor::where('name', $contractorName)->first();
             // Log::debug('ChequeScheduleImport[contractor][' . $contractorName . ']: ' . json_encode($contractor, JSON_UNESCAPED_UNICODE));
@@ -451,10 +330,6 @@ class ChequeScheduleImport implements ToCollection, WithMultipleSheets, WithCalc
             $organisation = Organisation::whereRaw('JSON_EXTRACT(data, "$.inn") = ' . "'{$inn}'")->first();
             // Log::debug('ChequeScheduleImport[organisation][' . $organisationName . ']: ' . json_encode($organisation, JSON_UNESCAPED_UNICODE));
 
-            if (!$organisation) {
-                throw new \Exception("Чек №" . $cheque_num . " - ошибка загрузки - не найдена организация " . $organisationName, 2);
-            }
-
             if (empty($organisation)) {
                 $expenseType = $organisation->expense_type;
             }
@@ -473,7 +348,5 @@ class ChequeScheduleImport implements ToCollection, WithMultipleSheets, WithCalc
                 }
             }
         }
-
-        return $cheques;
     }
 }

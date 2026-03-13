@@ -49,7 +49,7 @@
 			
 			<tr style="line-height:20px">
 				<td style="padding:0 3px 0 0; text-align:left; vertical-align:top; padding-left:0" align="left" valign="top">Налогообложение</td>
-				<td style="padding:0 3px 0 0; text-align:right; vertical-align:top; padding-right:0" align="right" valign="top"><?php if ($cheque->organisation->is_usn15) { ?>УСН доход - расход<?php } else { ?>ОСН<?php } ?></td>
+				<td style="padding:0 3px 0 0; text-align:right; vertical-align:top; padding-right:0" align="right" valign="top"><?php if ($cheque->organisation->is_usn15) { ?>УСН доход - расход<?php }elseif ($cheque->organisation->is_usn6) { ?>УСН доход<?php } else { ?>ОСН<?php } ?></td>
 			</tr>
 		</table>
 		
@@ -71,7 +71,7 @@
 						<?php print number_format($item['amount'], 2, '.', ''); ?>₽ × <?php print $item['quantity']; ?> = <?php print number_format($item['amount'] * $item['quantity'], 2, '.', ''); ?>₽
 					</td>
 				</tr>
-				<?php if ($cheque->organisation->is_usn15) { ?>
+				<?php if ($cheque->organisation->is_usn15 || $cheque->organisation->is_usn6) { ?>
 					<tr style="line-height:20px">
 	                    <td style="padding:0 3px 0 0; text-align:left; vertical-align:top; padding-left:0" align="left" valign="top"></td>
 	                    <td class="text_left" style="padding:0 3px 0 0; text-align:left; vertical-align:top" align="left" valign="top">Сумма без НДС</td>
@@ -102,7 +102,7 @@
 				<td style="padding:0 3px 0 0; text-align:left; vertical-align:top; padding-left:0; font-weight:bold" align="left" valign="top">Итого</td>
 				<td style="padding:0 3px 0 0; text-align:right; vertical-align:top; padding-right:0" align="right" valign="top"><?php print number_format($cheque->modulkassa['fiscalInfo']['sum'], 2, '.', ''); ?>₽</td>
 			</tr>
-			<?php if ($cheque->organisation->is_usn15) { ?>
+			<?php if ($cheque->organisation->is_usn15 || $cheque->organisation->is_usn6) { ?>
 				<tr class="comment" style="line-height:20px; color:#8f8f8f">
 		            <td style="padding:0 3px 0 0; text-align:left; vertical-align:top; padding-left:0" align="left" valign="top">Сумма без НДС</td>
 		            <td style="padding:0 3px 0 0; text-align:right; vertical-align:top; padding-right:0" align="right" valign="top"><?php print number_format($cheque->modulkassa['fiscalInfo']['sum'], 2, '.', ''); ?>₽</td>

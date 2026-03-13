@@ -184,7 +184,8 @@ class Organisation extends Component {
 
                                     <Form.Group>
                                         <Checkbox label='Без НДС' name="is_nonds" checked={item.is_nonds} onChange={this.handleFieldChange} style={{marginRight: "15px", marginLeft: "0.5em"}}/>
-                                        <Checkbox label='СНО "УСН доход - расход"' name="is_usn15" checked={item.is_usn15} onChange={this.handleFieldChange}/>
+                                        <Checkbox label='СНО "УСН доход - расход"' name="is_usn15" checked={item.is_usn15} onChange={this.handleFieldChange} style={{marginRight: "15px", marginLeft: "0.5em"}}/>
+                                        <Checkbox label='СНО "УСН доход"' name="is_usn6" checked={item.is_usn6} onChange={this.handleFieldChange}/>
                                     </Form.Group>
 
                                     <Form.Group>
@@ -198,6 +199,7 @@ class Organisation extends Component {
                                     <Divider horizontal>Подключение к кассе</Divider>
                                     <Form.Group>
                                         <Checkbox label='Модуль.Касса' name="modulkassa" checked={item.modulkassa} onChange={this.handleFieldChange} style={{marginLeft: "0.5em"}}/>
+                                        <Checkbox label='CloudPayments' name="cloudpayments" checked={item.cloudpayments} onChange={this.handleFieldChange} style={{marginLeft: "0.5em"}}/>
                                     </Form.Group>
                                     {/*<Divider horizontal>{trans('messages.organisations.1c_settings')}</Divider>
                                     <Form.Group>
@@ -205,11 +207,10 @@ class Organisation extends Component {
                                         <Form.Input name="data.1c.login" label={trans('messages.organisations.1c_login')} onChange={this.handleFieldChange}/>
                                         <Form.Input name="data.1c.password" icon="lock" label={trans('messages.organisations.1c_password')} onChange={this.handleFieldChange}/>
                                     </Form.Group>*/}
-                                    <Divider horizontal>Кассир</Divider>
 
-                                    <Divider horizontal>{trans('messages.organisations.1c_settings')}</Divider>
                                     { this.state.item.modulkassa ?
                                         <div>
+                                            <Divider horizontal>Настройки подключения к МодульКассе</Divider>
                                             <Form.Input name="data.cashier" defaultValue={item.data.cashier} label="Кассир" onChange={this.handleFieldChange}/>
                                             <Form.Group>
                                                 <Form.Select name="data.gmt" error={(errors && errors.gmt) ? {content:errors.gmt[0], pointing:'below'}:null} options={gmtOptions} value={parseInt(item.data.gmt)} label="Часовой пояс" onChange={this.handleFieldChange}/>
@@ -218,6 +219,17 @@ class Organisation extends Component {
                                                 <Form.Input name="data.modulkassa.uid" label="UID" onChange={this.handleFieldChange} defaultValue={item.data.modulkassa ? item.data.modulkassa.uid : ''}/>
                                                 <Form.Input name="data.modulkassa.login" label="Логин" onChange={this.handleFieldChange} defaultValue={item.data.modulkassa ? item.data.modulkassa.login : ''}/>
                                                 <Form.Input name="data.modulkassa.password" icon="lock" label="Пароль" onChange={this.handleFieldChange} defaultValue={item.data.modulkassa ? item.data.modulkassa.password : ''}/>
+                                            </Form.Group>
+                                        </div>
+                                        :null
+                                    }
+                                    { this.state.item.cloudpayments ?
+                                        <div>
+                                            <Divider horizontal>Настройки подключения к CloudPayments</Divider>
+                                            <Form.Input name="data.cashier" defaultValue={item.data.cashier} label="Кассир" onChange={this.handleFieldChange}/>
+                                            <Form.Group>
+                                                <Form.Input width={8} name="data.cloudpayments.public_id" label="Public ID" onChange={this.handleFieldChange} defaultValue={item.data.cloudpayments ? item.data.cloudpayments.public_id : ''}/>
+                                                <Form.Input width={8} name="data.cloudpayments.password" icon="lock" label="Пароль для API" onChange={this.handleFieldChange} defaultValue={item.data.cloudpayments ? item.data.cloudpayments.password : ''}/>
                                             </Form.Group>
                                         </div>
                                         :null
@@ -261,7 +273,8 @@ class Organisation extends Component {
                 </Table.Cell>
                 <Table.Cell>{item.expense_type?<Label>{item.expense_type.data} <Label.Detail>{item.expense_type.name || ''}</Label.Detail> </Label>:null}</Table.Cell>
                 <Table.Cell>{item.data.address || ''}</Table.Cell>
-                <Table.Cell>{item.auto_export ? 'Для маркета' : ''}</Table.Cell>
+                <Table.Cell>{item.is_usn15 ? 'УСН доходы-расходы' : (item.is_usn6 ? 'УСН доходы' : 'ОСНО')}</Table.Cell>
+                <Table.Cell>{item.auto_export ? 'Для маркета' : '-'}</Table.Cell>
                 <Table.Cell style={{ textAlign: "center" }}>
                     Лимит:
                     &nbsp;

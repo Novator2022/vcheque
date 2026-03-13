@@ -9,14 +9,16 @@ class Organisation extends Model
 {
     use SoftDeletes;
     protected $fillable = [
-        'name', 'data','expense_type_id','limit', 'modulkassa', 'is_nonds', 'is_usn15', 'auto_export', 'no_print'
+        'name', 'data','expense_type_id','limit', 'modulkassa', 'cloudpayments', 'is_nonds', 'is_usn15', 'is_usn6', 'auto_export', 'no_print'
     ];
     protected $casts = [
         'data' => 'array',
         'limit' => 'float',
         'modulkassa' => 'boolean',
+        'cloudpayments' => 'boolean',
         'is_nonds' => 'boolean',
         'is_usn15' => 'boolean',
+        'is_usn6' => 'boolean',
         'auto_export' => 'boolean',
         'no_print' => 'boolean',
     ];

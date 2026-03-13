@@ -217,7 +217,7 @@ class ChequeSchedules extends Component {
     }
     render() {
         const {contractors,cheque_schedule,organisations,expensetypes,nomenclatures,users} = this.props;
-        const {newItem, createFormOpen, createFreeFormOpen, uploadFormOpen, errors, search, nomenclatureSearch} = this.state;
+        const {newItem, createFormOpen, createFreeFormOpen, uploadFormOpen, errors, search, nomenclatureSearch, uploadError} = this.state;
         const {organisation, user_id} = newItem;
         const monthFirstDay = () => {
             var today = new Date();
@@ -320,6 +320,16 @@ class ChequeSchedules extends Component {
                                     <Header icon='plus' content="Загрузить заявку" />
                                     <Modal.Content>
                                         <Form>
+											{this.state.uploadError && (
+                                                <div class="ui negative message">
+                                                  <i class="close icon"></i>
+                                                  <div class="header">
+                                                    Ошибка загрузки
+                                                  </div>
+                                                  <p>{this.state.uploadError}
+                                                </p></div>
+                                            )}
+
                                             <Form.Group>
                                                 <Form.Select label="Пользователь" onChange={(e, {name, value}) => { this.setState({newupload:{user_id: value}});}} options={userOptions} name="user_id" placeholder={trans('messages.users.title')}/>
                                                 <Form.Checkbox style={{marginTop: 26 + 'px'}} name="no_nds" label="Без НДС" onChange={(e, {name, value}) => { this.setState({no_nds: value});}} value="1" />
@@ -327,7 +337,7 @@ class ChequeSchedules extends Component {
                                             {
                                                 this.state.newupload.user_id
                                                 ?<Form.Group>
-                                                    <FileUpload label="Файл по шаблону" name="template_upload" url="/cheque_schedule" onBefore={(p) => {p.append('user_id', this.state.newupload.user_id); if (this.state.no_nds) { p.append('no_nds', this.state.no_nds); } ;}} onUploaded={(response) => {console.log('upload',response);document.location.reload();}} onFailed={(response) => {console.log('upload',response);document.location.reload();}}/>
+                                                    <FileUpload label="Файл по шаблону" name="template_upload" url="/cheque_schedule" onBefore={(p) => {p.append('user_id', this.state.newupload.user_id); if (this.state.no_nds) { p.append('no_nds', this.state.no_nds); } ;}} onUploaded={(response) => { window.location.reload(); }} onFailed={(response) => { console.log(response); if ((response.status === 422) || (response.status === 400)) { const message = response.data.message || 'Файл содержит некорректные данные'; this.setState({ uploadError: message }); } else { this.setState({ uploadError: 'Ошибка сервера, попробуйте позже' }); } }}/>
                                                 </Form.Group>
                                                 :null
                                             }

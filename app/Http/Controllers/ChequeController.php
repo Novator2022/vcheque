@@ -9,7 +9,11 @@ use App\ChequeToPrint;
 use App\Param;
 use App\Organisation;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+
+use Carbon\Carbon;
+use Carbon\CarbonPeriod;
 
 class ChequeController extends Controller
 {
@@ -73,6 +77,122 @@ class ChequeController extends Controller
     public function create()
     {
         //
+    }
+
+    public function stats(Request $request)
+    {
+        $query = Cheque::query();
+
+        if ($request->has('user_id')) {
+            $users = preg_split('/\,/im', $request->user_id);
+            $query->whereIn('user_id', $users);
+        }
+
+        if (in_array($request->user()->role, ['user','manager'])) {
+            $users = [$request->user()->id];
+
+            $users = array_merge(
+                $users,
+                User::where('manager_id', $request->user()->id)->pluck('id')->toArray()
+            );
+
+            $query->whereIn('user_id', $users);
+        }
+
+        $dateFrom = $request->input('date_from');
+        $dateTo   = $request->input('date_to');
+
+        // нормализация
+        if ($dateFrom) {
+            $dateFrom = Carbon::parse($dateFrom)->startOfDay();
+            $query->where('created_at', '>=', $dateFrom);
+        }
+
+        if ($dateTo) {
+            $dateTo = Carbon::parse($dateTo)->endOfDay();
+            $query->where('created_at', '<=', $dateTo);
+        }
+
+        $count = (clone $query)->count();
+
+        // сумма из JSON позиций
+        $amount = (clone $query)
+            ->get()
+            ->reduce(function ($acc, $cheque) {
+                $sum = 0;
+
+                if (!empty($cheque->data['positions'])) {
+                    foreach ($cheque->data['positions'] as $pos) {
+                        $sum += ($pos['amount'] ?? 0) * ($pos['quantity'] ?? 1);
+                    }
+                }
+
+                return $acc + $sum;
+            }, 0);
+
+        $rawDays = (clone $query)
+            ->selectRaw('DATE(created_at) as day, cheques.*')
+            ->orderBy('day')
+            ->get()
+            ->groupBy('day')
+            ->map(function ($items, $day) {
+                $count = $items->count();
+
+                $amount = $items->reduce(function ($acc, $cheque) {
+                    $sum = 0;
+
+                    if (!empty($cheque->data['positions'])) {
+                        foreach ($cheque->data['positions'] as $pos) {
+                            $sum += ($pos['amount'] ?? 0) * ($pos['quantity'] ?? 1);
+                        }
+                    }
+
+                    return $acc + $sum;
+                }, 0);
+
+                return [
+                    'date' => $day,
+                    'count' => $count,
+                    'amount' => $amount,
+                ];
+            })
+            ->keyBy('date'); // 👈 важно
+
+        // ======================
+        // 2. Диапазон дат
+        // ======================
+
+        // если даты не заданы — можно fallback на min/max
+        $start = $dateFrom ? Carbon::parse($dateFrom) : Carbon::parse($rawDays->keys()->first());
+        $end = $dateTo 
+            ? Carbon::parse($dateTo)->min(Carbon::now()) 
+            : Carbon::parse($rawDays->keys()->last())->min(Carbon::now());
+
+        $period = CarbonPeriod::create($start->startOfDay(), $end->endOfDay());
+
+        // ======================
+        // 3. Заполнение нулями
+        // ======================
+        $byDays = collect($period)->map(function ($date) use ($rawDays) {
+
+            $key = $date->format('Y-m-d');
+
+            if (isset($rawDays[$key])) {
+                return $rawDays[$key];
+            }
+
+            return [
+                'date' => $key,
+                'count' => 0,
+                'amount' => 0,
+            ];
+        })->values();
+
+        return response()->json([
+            'count' => $count,
+            'amount' => $amount,
+            'byDays' => $byDays,
+        ]);
     }
 
     /**
@@ -216,6 +336,7 @@ class ChequeController extends Controller
 
         include_once(base_path('vendor/qr/qrlib.php'));
         ob_start();
+
         \QRcode::png($cheque->modulkassa['fiscalInfo']['qr'], false, QR_ECLEVEL_L, 4);
         $qr = base64_encode(ob_get_clean());
 
@@ -246,6 +367,7 @@ class ChequeController extends Controller
 
         include_once(base_path('vendor/qr/qrlib.php'));
         ob_start();
+
         \QRcode::png($cheque->modulkassa['fiscalInfo']['qr'], false, QR_ECLEVEL_L, 4);
         $qr = base64_encode(ob_get_clean());
 

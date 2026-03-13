@@ -21,9 +21,8 @@
 			$nds_rate = 20;
 		}
 	?>
-	<?php /*<pre style="position:fixed;left:10px;top:10px; border:1px solid #ccc;padding: 10px; background: #fff;opacity:0.5"><?php print_r($cheque->organisation); ?><?php print_r($cheque->modulkassa); ?></pre>*/ ?>
 	<div class="wrapper" style="background-color:white; font-weight:400; margin:0 auto; padding:15px; max-width: 450px;" bgcolor="white">
-		<h6 class="long_text">&nbsp;</h6>
+		<!-- <h6 class="long_text">&nbsp;</h6> -->
 		<table style='border:0; font-family:"HelveticaNeue", "Helvetica", "Arial", "sans-serif"; font-size:14px; margin:6px 0; width:100%' width="100%">
 			<tr class="doc-type" style="line-height:20px">
 				<td style="padding:0 3px 0 0; text-align:left; vertical-align:top; padding-left:0" align="left" valign="top">
@@ -56,7 +55,7 @@
 			
 			<tr style="line-height:20px">
 				<td style="padding:0 3px 0 0; text-align:left; vertical-align:top; padding-left:0" align="left" valign="top">Налогообложение</td>
-				<td style="padding:0 3px 0 0; text-align:right; vertical-align:top; padding-right:0" align="right" valign="top"><?php if ($cheque->organisation->is_usn15) { ?>УСН доход - расход<?php } else { ?>ОСН<?php } ?></td>
+				<td style="padding:0 3px 0 0; text-align:right; vertical-align:top; padding-right:0" align="right" valign="top"><?php if ($cheque->organisation->is_usn15) { ?>УСН доход - расход<?php }elseif ($cheque->organisation->is_usn6) { ?>УСН доход<?php } else { ?>ОСН<?php } ?></td>
 			</tr>
 		</table>
 		
@@ -78,7 +77,7 @@
 						<?php print number_format($item['amount'], 2, '.', ''); ?>₽ × <?php print $item['quantity']; ?> = <?php print number_format($item['amount'] * $item['quantity'], 2, '.', ''); ?>₽
 					</td>
 				</tr>
-				<?php if ($cheque->organisation->is_usn15) { ?>
+				<?php if ($cheque->organisation->is_usn15 || $cheque->organisation->is_usn6) { ?>
 					<tr style="line-height:20px">
 	                    <td style="padding:0 3px 0 0; text-align:left; vertical-align:top; padding-left:0" align="left" valign="top"></td>
 	                    <td class="text_left" style="padding:0 3px 0 0; text-align:left; vertical-align:top" align="left" valign="top">Сумма без НДС</td>
@@ -109,7 +108,7 @@
 				<td style="padding:0 3px 0 0; text-align:left; vertical-align:top; padding-left:0; font-weight:bold" align="left" valign="top">Итого</td>
 				<td style="padding:0 3px 0 0; text-align:right; vertical-align:top; padding-right:0" align="right" valign="top"><?php print number_format($cheque->modulkassa['fiscalInfo']['sum'], 2, '.', ''); ?>₽</td>
 			</tr>
-			<?php if ($cheque->organisation->is_usn15) { ?>
+			<?php if ($cheque->organisation->is_usn15 || $cheque->organisation->is_usn6) { ?>
 				<tr class="comment" style="line-height:20px; color:#8f8f8f">
 		            <td style="padding:0 3px 0 0; text-align:left; vertical-align:top; padding-left:0" align="left" valign="top">Сумма без НДС</td>
 		            <td style="padding:0 3px 0 0; text-align:right; vertical-align:top; padding-right:0" align="right" valign="top"><?php print number_format($cheque->modulkassa['fiscalInfo']['sum'], 2, '.', ''); ?>₽</td>
@@ -173,7 +172,7 @@
 
 			<tr style="line-height:20px">
 				<td style="padding:0 3px 0 0; text-align:left; vertical-align:top; padding-left:0" align="left" valign="top">Версия ФФД</td>
-				<td style="padding:0 3px 0 0; text-align:right; vertical-align:top; padding-right:0" align="right" valign="top">1.05</td>
+				<td style="padding:0 3px 0 0; text-align:right; vertical-align:top; padding-right:0" align="right" valign="top"><?php if (isset($ffd)) { print $ffd; } else { ?>1.05<?php } ?></td>
 			</tr>
 		</table>
 

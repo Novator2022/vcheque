@@ -63,6 +63,22 @@ class Modulkassa
 
         // \Log::debug($cheque->organisation);
 
+        // Тип СНО.
+        // • COMMON - ОСН
+        // • SIMPLIFIED – УСН Доходы
+        // • SIMPLIFIED_WITH_EXPENSE – УСН Доход минус
+        // расход
+        // • ENVD - ЕНВД
+        // • COMMON_AGRICULTURAL - ЕСНХ
+        // • PATENT – Патент
+
+        $taxMode = "COMMON";
+        if ($cheque->organisation && $cheque->organisation->is_usn15) {
+            $taxMode = "SIMPLIFIED_WITH_EXPENSE";
+        } elseif ($cheque->organisation && $cheque->organisation->is_usn6) {
+            $taxMode = "SIMPLIFIED";
+        }
+
         $data = [
             "id" => $cheque->doc_num,
             "docNum" => $cheque->id,
@@ -75,7 +91,7 @@ class Modulkassa
             "cashierInn" => null,
             "cashierPosition" => 'кассир',
             "responseURL" => route('modulkassa.callback', [$cheque]),
-            "taxMode" => ($cheque->organisation && $cheque->organisation->is_usn15) ? "SIMPLIFIED_WITH_EXPENSE" : "COMMON",
+            "taxMode" => $taxMode,
             // "taxMode" => "COMMON",
             "clientName" => null,
             "clientInn" => null,
@@ -100,7 +116,7 @@ class Modulkassa
         $sum = 0;
 
         foreach ($cheque->data["positions"] as $pos) {
-            $ndsTag = "1102";
+            $ndsTag = "1113";
             $nds = $pos["nds"] ?? 0.22;
             if ($nds*100 == 10) {
                 $ndsTag = "1103";

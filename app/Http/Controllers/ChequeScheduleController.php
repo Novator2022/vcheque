@@ -90,7 +90,13 @@ class ChequeScheduleController extends Controller
             try {
                 Excel::import(new ChequeScheduleImport($user, $no_nds), $importFile);
             } catch (\Exception $e) {
-                $request->session()->flash('message', $e->getMessage());
+                return response()->json([
+                    "error" => true,
+                    "code" => "INVALID_DATA",
+                    "message" => $e->getMessage()
+                ], 400, ['Content-Type' => 'application/json; charset=utf-8'], JSON_UNESCAPED_UNICODE);
+
+                // $request->session()->flash('message', $e->getMessage());
             }
         } else {
             $data = $request->all();
